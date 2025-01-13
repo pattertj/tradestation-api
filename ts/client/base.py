@@ -580,8 +580,8 @@ class BaseClient(ABC):
         symbol: str,
         interval: int,
         unit: str,
-        barsback: int,
-        firstdate: datetime,
+        barsback: int | None,
+        firstdate: datetime | None,
         lastdate: datetime,
         sessiontemplate: str,
     ) -> Response | Awaitable[Response]:
@@ -598,6 +598,12 @@ class BaseClient(ABC):
         # validate the token.
         self._token_validation()
 
+        if barsback and firstdate:
+            raise ValueError("Either barsback or firstdate must be None.")
+
+        if not (barsback or firstdate):
+            raise ValueError("Must provide either barsback or firstdate.")
+
         # define the endpoint.
         url_endpoint = self._api_endpoint(f"marketdata/barcharts/{symbol}")
 
@@ -611,6 +617,9 @@ class BaseClient(ABC):
             "lastdate": lastdate,
             "sessiontemplate": sessiontemplate,
         }
+
+        # Filter out any None values
+        params = {k: v for k, v in params.items() if v is not None}
 
         return self._get_request(url=url_endpoint, params=params)
 
