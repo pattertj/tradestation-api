@@ -35,6 +35,8 @@ class BaseClient(ABC):
         _access_token_expires_in (int): Time in seconds until the access token expires. Initialized to 0.
         _access_token_expires_at (float): Timestamp when the access token will expire. Initialized to 0.0.
         _base_resource (str): The base API endpoint for requests.
+        token_file_path_fn (str): The path to a json file with token state. Defaults to the former
+                                   hard-coded value, for backward compatibility.
     """
 
     client_id: str
@@ -48,6 +50,7 @@ class BaseClient(ABC):
     _access_token_expires_at: float = field(default=0.0)
     _token_read_func: Optional[Callable] = field(default=None)
     _token_update_func: Optional[Callable] = field(default=None)
+    token_file_path_fn: Optional[str] = field(default="ts_state.json")
 
     def __post_init__(self) -> None:
         """Init the base resource field."""
@@ -167,7 +170,7 @@ class BaseClient(ABC):
         (bool): `True` if saving the token was successful. `False` otherwise.
         """
         if self._update_token_variables(response):
-            filename = "ts_state.json"
+            filename = self.token_file_path_fn
 
             state = {
                 "access_token": self._access_token,
@@ -190,7 +193,7 @@ class BaseClient(ABC):
             bool: Success / Failure
         """
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        filename = "ts_state.json"
+        filename = self.token_file_path_fn
         file_path = os.path.join(dir_path, filename)
         state: Optional[dict] = None
 

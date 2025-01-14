@@ -141,7 +141,8 @@ def __token_loader(token_path: str) -> Callable[[], Dict[str, Any]]:
 
 
 def easy_client(
-    client_key: str, client_secret: str, redirect_uri: str, paper_trade: bool = True, asyncio: bool = False
+    client_key: str, client_secret: str, redirect_uri: str, paper_trade: bool = True, asyncio: bool = False,
+        token_file_path_fn: str = "ts_state.json"
 ) -> AsyncClient | Client:
     """
     Initialize and return a client object based on existing token or manual flow.
@@ -152,6 +153,7 @@ def easy_client(
     - redirect_uri (str): The redirect URI for OAuth2.
     - paper_trade (bool, optional): Flag to indicate if the client should operate in paper trade mode. Default is True.
     - asyncio (bool, optional): Flag to indicate if the client should be asynchronous. Default is False.
+    - token_file_path_fn: Path and filename to the json file saving state. Defaults to the former hardcoded value
 
     Returns:
     - AsyncClient | Client: An instance of either the AsyncClient or Client class,
@@ -168,17 +170,18 @@ def easy_client(
     """
     logger = get_logger()
 
-    if os.path.isfile("ts_state.json"):
-        c = client_from_token_file(client_key, client_secret, paper_trade, asyncio)
-        logger.info("Returning client loaded from token file 'ts_state.json'")
+    if os.path.isfile(token_file_path_fn):
+        c = client_from_token_file(client_key, client_secret, paper_trade, asyncio, token_file_path_fn)
+        logger.info("Returning client loaded from token file %s" % token_file_path_fn)
     else:
-        logger.warning("Failed to find token file 'ts_state.json'")
-        c = client_from_manual_flow(client_key, client_secret, redirect_uri, paper_trade, asyncio)
+        logger.warning("Failed to find token file %s " % token_file_path_fn)
+        c = client_from_manual_flow(client_key, client_secret, redirect_uri, paper_trade, asyncio, token_file_path_fn)
     return c
 
 
 def client_from_manual_flow(
-    client_key: str, client_secret: str, redirect_uri: str, paper_trade: bool = True, asyncio: bool = False
+    client_key: str, client_secret: str, redirect_uri: str, paper_trade: bool = True, asyncio: bool = False,
+        token_file_path_fn: str = "ts_state.json"
 ) -> AsyncClient | Client:
     """
     Initialize and return a client object by manually completing the OAuth2 flow.
@@ -189,6 +192,7 @@ def client_from_manual_flow(
     - redirect_uri (str): The redirect URI for OAuth.
     - paper_trade (bool, optional): Flag to indicate if the client should operate in paper trade mode. Default is True.
     - asyncio (bool, optional): Flag to indicate if the client should be asynchronous. Default is False.
+    - token_file_path_fn (str, optional): Path and filename to json file saving state. Defaults to former hardcoded value.
 
     Returns:
     - AsyncClient | Client: An instance of either the AsyncClient or Client class,
@@ -239,7 +243,7 @@ def client_from_manual_flow(
     token: dict[str, Union[str, int]] = response.json()
 
     # Update Token State (this function should be defined elsewhere)
-    update_token = __update_token("ts_state.json")
+    update_token = __update_token(token_file_path_fn)
     update_token(token)
 
     # Initialize the Client
@@ -253,11 +257,13 @@ def client_from_manual_flow(
         _refresh_token=str(token.get("refresh_token")),
         _access_token_expires_in=int(token.get("access_token_expires_in", 0)),
         _access_token_expires_at=int(token.get("access_token_expires_at", 0)),
+        token_file_path_fn=str(token_file_path_fn)
     )
 
 
 def client_from_token_file(
-    client_key: str, client_secret: str, paper_trade: bool = True, asyncio: bool = False
+    client_key: str, client_secret: str, paper_trade: bool = True, asyncio: bool = False,
+        token_file_path_fn: str = "ts_state.json"
 ) -> AsyncClient | Client:
     """
     Initialize and return a client object based on a given token file.
@@ -288,10 +294,11 @@ def client_from_token_file(
     return client_from_access_functions(
         client_key,
         client_secret,
-        __token_loader("ts_state.json"),
-        __update_token("ts_state.json"),
+        __token_loader(token_file_path_fn),
+        __update_token(token_file_path_fn),
         paper_trade,
         asyncio,
+        token_file_path_fn,
     )
 
 
@@ -302,6 +309,7 @@ def client_from_access_functions(
     token_update_func: Callable,
     paper_trade: bool = True,
     asyncio: bool = False,
+    token_file_path_fn: str = "ts_state.json",
 ) -> AsyncClient | Client:
     """
     Initialize and return a client object based on the provided access functions and settings.
@@ -352,4 +360,5 @@ def client_from_access_functions(
         _access_token_expires_at=token.get("access_token_expires_at", 0),
         _token_read_func=token_read_func,
         _token_update_func=token_update_func,
+        token_file_path_fn=token_file_path_fn,
     )
