@@ -159,7 +159,7 @@ class BaseClient(ABC):
 
         Arguments:
         ----
-        response (requests.Response): A response object recieved from the `token_refresh` or `_grab_access_token`
+        response (requests.Response): A response object received from the `token_refresh` or `_grab_access_token`
             methods.
 
         Returns:
@@ -248,10 +248,11 @@ class BaseClient(ABC):
         (int): The number of seconds till expiration
         """
         # Calculate the token expire time.
-        token_exp = time.time() >= self._access_token_expires_at
+        token_exp_time = self._access_token_expires_at - time.time()
 
-        # if the time to expiration is less than or equal to 0, return 0.
-        return 0 if not self._refresh_token or token_exp else int(token_exp)
+        if token_exp_time <= 0:
+            return 0
+        return int(self._access_token_expires_at - time.time())
 
     def _token_validation(self, nseconds: int = 5) -> None:
         """Validate the Access Token.
